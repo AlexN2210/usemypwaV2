@@ -60,7 +60,7 @@ export function PostSwipeCard({ post, onSwipe }: PostSwipeCardProps) {
 
   return (
     <div
-      className="relative w-full h-full max-h-[85vh] sm:max-h-[90vh] bg-white rounded-2xl shadow-2xl overflow-hidden"
+      className="relative w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
       style={{
         transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) rotate(${dragOffset.x * 0.1}deg)`,
         transition: isDragging ? 'none' : 'transform 0.3s ease-out',
@@ -70,7 +70,7 @@ export function PostSwipeCard({ post, onSwipe }: PostSwipeCardProps) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="h-full flex flex-col overflow-y-auto">
+      <div className="flex flex-col max-h-[80vh]">
         {/* Header avec auteur */}
         <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50">
           <div className="flex items-center gap-3">
@@ -95,27 +95,33 @@ export function PostSwipeCard({ post, onSwipe }: PostSwipeCardProps) {
           </div>
         </div>
 
-        {/* Contenu du post */}
-        <div className="flex-1 p-4 overflow-y-auto min-h-0">
-          {post.ape_code && (
-            <div className="mb-3">
-              <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+        {/* Contenu du post sous forme de card */}
+        <div className="flex-1 p-4 space-y-3 overflow-y-auto">
+          <div className="flex flex-wrap gap-2">
+            {post.ape_code ? (
+              <span className="inline-flex items-center px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium border border-blue-100">
                 {translateApeCode(post.ape_code)} ({post.ape_code})
               </span>
-            </div>
-          )}
+            ) : (
+              <span className="inline-flex items-center px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-medium border border-emerald-100">
+                Demande générale
+              </span>
+            )}
+          </div>
 
           {post.content && (
-            <p className="text-gray-700 text-sm sm:text-base mb-4 leading-relaxed whitespace-pre-wrap">
-              {post.content}
-            </p>
+            <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 sm:p-4">
+              <p className="text-gray-800 text-sm sm:text-base leading-relaxed whitespace-pre-wrap">
+                {post.content}
+              </p>
+            </div>
           )}
 
           {post.image_url && (
             <img
               src={post.image_url}
               alt="Post"
-              className="w-full rounded-lg mb-4 object-cover"
+              className="w-full rounded-xl object-cover border border-gray-100"
             />
           )}
         </div>
