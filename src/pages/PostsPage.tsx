@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, Post } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Plus, Image as ImageIcon, Eye, Clock } from 'lucide-react';
+import { Plus, Image as ImageIcon, Eye, Clock, Sparkles } from 'lucide-react';
 import { translateApeCode, APE_CODE_MAPPING } from '../lib/apeCodeTranslator';
 
 export function PostsPage() {
@@ -12,12 +12,59 @@ export function PostsPage() {
   const [content, setContent] = useState('');
   const [postType, setPostType] = useState<'post' | 'story'>('post');
   const [selectedApeCode, setSelectedApeCode] = useState<string>('');
+  const [suggestedCodes, setSuggestedCodes] = useState<string[]>([]);
 
   // Harmoniser les valeurs de type d'utilisateur (FR/EN)
   const userTypeRaw = profile?.user_type as string | undefined;
   const isProfessional = userTypeRaw === 'professional' || userTypeRaw === 'professionnel';
   // Tout utilisateur connecté qui n'est PAS pro est considéré comme particulier ici
   const isIndividual = !!profile && !isProfessional;
+
+  // Suggestions "intelligentes" de codes APE en fonction du texte saisi
+  useEffect(() => {
+    if (!isIndividual || !content.trim()) {
+      setSuggestedCodes([]);
+      return;
+    }
+
+    const text = content.toLowerCase();
+    const words = Array.from(
+      new Set(
+        text
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .split(/[^a-z0-9]+/)
+          .filter((w) => w.length >= 3)
+      )
+    );
+
+    if (words.length === 0) {
+      setSuggestedCodes([]);
+      return;
+    }
+
+    const scores: Array<{ code: string; score: number }> = [];
+
+    for (const [code, label] of Object.entries(APE_CODE_MAPPING)) {
+      const labelNorm = label
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+      let score = 0;
+      for (const w of words) {
+        if (labelNorm.includes(w)) {
+          score += 1;
+        }
+      }
+      if (score > 0) {
+        scores.push({ code, score });
+      }
+    }
+
+    scores.sort((a, b) => b.score - a.score);
+    const top = scores.slice(0, 3).map((s) => s.code);
+    setSuggestedCodes(top);
+  }, [content, isIndividual]);
 
   useEffect(() => {
     loadPosts();
@@ -259,7 +306,7 @@ export function PostsPage() {
             <div className="mb-4">
               <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
                 {isIndividual
-                  ? 'Décrivez votre besoin' 
+                  ? 'Décrivez votre besoin'
                   : isProfessional
                   ? 'Promouvez vos services (ex: Promo sur les concombres aujourd\'hui et demain)'
                   : 'Contenu'}
@@ -272,7 +319,7 @@ export function PostsPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                 placeholder={
                   isIndividual
-                    ? 'Ex: Je souhaite refaire ma terrasse...' 
+                    ? 'Ex: Je souhaite refaire ma terrasse...'
                     : isProfessional
                     ? 'Ex: Promo sur les concombres aujourd\'hui et demain !'
                     : 'Partagez quelque chose...'
@@ -285,6 +332,28 @@ export function PostsPage() {
                 <label htmlFor="ape_code" className="block text-sm font-medium text-gray-700 mb-2">
                   Professions concernées (Code APE) <span className="text-red-500">*</span>
                 </label>
+                {suggestedCodes.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2 items-center text-xs">
+                    <span className="inline-flex items-center gap-1 text-gray-500">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      Suggestions :
+                    </span>
+                    {suggestedCodes.map((code) => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setSelectedApeCode(code)}
+                        className={`px-2 py-1 rounded-full border text-xs ${
+                          selectedApeCode === code
+                            ? 'bg-blue-500 text-white border-blue-500'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                      >
+                        {translateApeCode(code)} ({code})
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <select
                   id="ape_code"
                   value={selectedApeCode}
