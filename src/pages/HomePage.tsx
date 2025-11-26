@@ -101,7 +101,6 @@ export function HomePage() {
       .from('matches')
       .select('user_id, post_id')
       .not('post_id', 'is', null)
-      .eq('action', 'like')
       .eq('target_user_id', user.id)
       .in('post_id', postIds);
 
