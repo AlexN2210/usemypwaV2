@@ -13,6 +13,11 @@ export function PostsPage() {
   const [postType, setPostType] = useState<'post' | 'story'>('post');
   const [selectedApeCode, setSelectedApeCode] = useState<string>('');
 
+  // Harmoniser les valeurs de type d'utilisateur (FR/EN)
+  const userType = profile?.user_type as string | undefined;
+  const isIndividual = userType === 'individual' || userType === 'particulier';
+  const isProfessional = userType === 'professional' || userType === 'professionnel';
+
   useEffect(() => {
     loadPosts();
   }, []);
@@ -62,7 +67,7 @@ export function PostsPage() {
     if (!user || !content.trim()) return;
     
     // Pour les particuliers, une catégorie OU une demande générale est requise
-    if (profile?.user_type === 'individual' && !selectedApeCode) {
+    if (isIndividual && !selectedApeCode) {
       alert('Veuillez sélectionner une catégorie ou choisir "Demande générale" pour votre besoin');
       return;
     }
@@ -82,7 +87,7 @@ export function PostsPage() {
         // - si une catégorie précise est choisie → stocker le code APE
         // - si "général" est choisi → ape_code null (visible comme demande générale)
         ape_code:
-          profile?.user_type === 'individual'
+          isIndividual
             ? selectedApeCode === 'GENERAL'
               ? null
               : selectedApeCode
@@ -252,9 +257,9 @@ export function PostsPage() {
 
             <div className="mb-4">
               <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-                {profile?.user_type === 'individual' 
+                {isIndividual
                   ? 'Décrivez votre besoin' 
-                  : (profile?.user_type === 'professional' || profile?.user_type === 'professionnel')
+                  : isProfessional
                   ? 'Promouvez vos services (ex: Promo sur les concombres aujourd\'hui et demain)'
                   : 'Contenu'}
               </label>
@@ -265,16 +270,16 @@ export function PostsPage() {
                 rows={4}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
                 placeholder={
-                  profile?.user_type === 'individual' 
+                  isIndividual
                     ? 'Ex: Je souhaite refaire ma terrasse...' 
-                    : (profile?.user_type === 'professional' || profile?.user_type === 'professionnel')
+                    : isProfessional
                     ? 'Ex: Promo sur les concombres aujourd\'hui et demain !'
                     : 'Partagez quelque chose...'
                 }
               />
             </div>
 
-            {profile?.user_type === 'individual' && (
+            {isIndividual && (
               <div className="mb-4">
                 <label htmlFor="ape_code" className="block text-sm font-medium text-gray-700 mb-2">
                   Professions concernées (Code APE) <span className="text-red-500">*</span>
@@ -308,7 +313,7 @@ export function PostsPage() {
               </button>
               <button
                 onClick={createPost}
-                disabled={!content.trim() || (profile?.user_type === 'individual' && !selectedApeCode)}
+                disabled={!content.trim() || (isIndividual && !selectedApeCode)}
                 className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Publier
