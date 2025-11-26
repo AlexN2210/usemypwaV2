@@ -188,10 +188,11 @@ export function HomePage() {
     }
 
     // Charger les posts qui correspondent au code APE du professionnel
+    // ou les demandes générales (ape_code null)
     const { data: postsData, error } = await supabase
       .from('posts')
       .select('*')
-      .eq('ape_code', professionalData.ape_code)
+      .or(`ape_code.eq.${professionalData.ape_code},ape_code.is.null`)
       .order('created_at', { ascending: false });
 
     if (error) {
