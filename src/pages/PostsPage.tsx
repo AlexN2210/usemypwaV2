@@ -332,28 +332,31 @@ export function PostsPage() {
                 <label htmlFor="ape_code" className="block text-sm font-medium text-gray-700 mb-2">
                   Professions concernées (Code APE) <span className="text-red-500">*</span>
                 </label>
-                {suggestedCodes.length > 0 && (
-                  <div className="mb-2 flex flex-wrap gap-2 items-center text-xs">
-                    <span className="inline-flex items-center gap-1 text-gray-500">
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      Suggestions :
+                <div className="mb-2 flex flex-wrap gap-2 items-center text-xs">
+                  <span className="inline-flex items-center gap-1 text-gray-500">
+                    <Sparkles className="w-3 h-3 text-amber-500" />
+                    Suggestions :
+                  </span>
+                  {suggestedCodes.length === 0 && (
+                    <span className="text-[11px] text-gray-400">
+                      Saisissez votre besoin pour voir des professions suggérées
                     </span>
-                    {suggestedCodes.map((code) => (
-                      <button
-                        key={code}
-                        type="button"
-                        onClick={() => setSelectedApeCode(code)}
-                        className={`px-2 py-1 rounded-full border text-xs ${
-                          selectedApeCode === code
-                            ? 'bg-blue-500 text-white border-blue-500'
-                            : 'bg-blue-50 text-blue-700 border-blue-200'
-                        }`}
-                      >
-                        {translateApeCode(code)} ({code})
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  )}
+                  {suggestedCodes.map((code) => (
+                    <button
+                      key={code}
+                      type="button"
+                      onClick={() => setSelectedApeCode(code)}
+                      className={`px-2 py-1 rounded-full border text-xs ${
+                        selectedApeCode === code
+                          ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}
+                    >
+                      {translateApeCode(code)} ({code})
+                    </button>
+                  ))}
+                </div>
                 <select
                   id="ape_code"
                   value={selectedApeCode}
