@@ -60,7 +60,7 @@ export function PostSwipeCard({ post, onSwipe }: PostSwipeCardProps) {
 
   return (
     <div
-      className="relative w-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
+      className="relative w-full h-full bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-100"
       style={{
         transform: `translate(${dragOffset.x}px, ${dragOffset.y}px) rotate(${dragOffset.x * 0.1}deg)`,
         transition: isDragging ? 'none' : 'transform 0.3s ease-out',
@@ -70,7 +70,7 @@ export function PostSwipeCard({ post, onSwipe }: PostSwipeCardProps) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      <div className="flex flex-col max-h-[80vh]">
+      <div className="flex flex-col h-full">
         {/* Header avec auteur */}
         <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50">
           <div className="flex items-center gap-3">
