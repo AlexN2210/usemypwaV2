@@ -95,12 +95,30 @@ export function PostsPage() {
   }, []);
 
   const loadPosts = async () => {
+    if (!user || !profile) {
+      setPosts([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
-    const { data: postsData, error } = await supabase
-      .from('posts')
-      .select('*')
-      .order('created_at', { ascending: false });
+    let query = supabase.from('posts').select('*');
+
+    if (isIndividual) {
+      // Particulier : ne voir que ses propres demandes
+      query = query.eq('user_id', user.id);
+    } else if (isProfessional) {
+      // Professionnel : ne voir que ses propres posts de promotion (ape_code null)
+      query = query.eq('user_id', user.id).is('ape_code', null);
+    } else {
+      // Type d'utilisateur inconnu : ne rien afficher
+      setPosts([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: postsData, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error loading posts:', error);
