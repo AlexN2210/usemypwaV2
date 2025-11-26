@@ -14,9 +14,10 @@ export function PostsPage() {
   const [selectedApeCode, setSelectedApeCode] = useState<string>('');
 
   // Harmoniser les valeurs de type d'utilisateur (FR/EN)
-  const userType = profile?.user_type as string | undefined;
-  const isIndividual = userType === 'individual' || userType === 'particulier';
-  const isProfessional = userType === 'professional' || userType === 'professionnel';
+  const userTypeRaw = profile?.user_type as string | undefined;
+  const isProfessional = userTypeRaw === 'professional' || userTypeRaw === 'professionnel';
+  // Tout utilisateur connecté qui n'est PAS pro est considéré comme particulier ici
+  const isIndividual = !!profile && !isProfessional;
 
   useEffect(() => {
     loadPosts();
