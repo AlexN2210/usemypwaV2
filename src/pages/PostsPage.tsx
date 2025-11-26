@@ -91,8 +91,10 @@ export function PostsPage() {
   }, [content, isIndividual]);
 
   useEffect(() => {
+    // Recharger les posts à chaque fois que l'utilisateur ou son type change
     loadPosts();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, userTypeRaw]);
 
   const loadPosts = async () => {
     if (!user || !profile) {
