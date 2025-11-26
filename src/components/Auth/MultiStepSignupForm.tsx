@@ -5,6 +5,7 @@ import { ProfessionSelector } from './ProfessionSelector';
 import { SiretValidator } from './SiretValidator';
 import { SiretValidationResult } from '../../lib/siretService';
 import { User, Briefcase, ArrowLeft, ArrowRight } from 'lucide-react';
+import { GoogleAddressAutocomplete } from '../Location/GoogleAddressAutocomplete';
 
 interface MultiStepSignupFormProps {
   onToggleMode: () => void;
@@ -244,19 +245,18 @@ export function MultiStepSignupForm({ onToggleMode }: MultiStepSignupFormProps) 
                 </p>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Adresse
-                </label>
-                <input
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) => updateFormData({ address: e.target.value })}
-                  required
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-                  placeholder="123 rue de la République"
-                />
-              </div>
+              <GoogleAddressAutocomplete
+                value={formData.address}
+                onAddressChange={({ address, postalCode, city }) => {
+                  updateFormData({
+                    address,
+                    postalCode: postalCode ?? formData.postalCode,
+                    city: city ?? formData.city,
+                  });
+                }}
+                label="Adresse"
+                placeholder="123 rue de la République"
+              />
 
               <div className="grid grid-cols-2 gap-4">
                 <div>

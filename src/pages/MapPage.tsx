@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase, Profile, ProfessionalProfile, Post } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { MapPin, Navigation, Briefcase, Star, FileText } from 'lucide-react';
-import { MapComponent } from '../components/Map/MapComponent';
+import { MapPin, Navigation, Briefcase, Star, FileText, Leaf } from 'lucide-react';
+import { GoogleMap } from '../components/Map/GoogleMap';
 
 export function MapPage() {
   const { profile } = useAuth();
@@ -13,6 +13,16 @@ export function MapPage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([48.8566, 2.3522]); // Paris par défaut
   const [mapZoom, setMapZoom] = useState(13);
+
+  const getLeafClasses = (distance?: number) => {
+    if (distance === undefined) return 'text-gray-400';
+    if (distance < 10) {
+      // Commerce très proche mis en avant
+      return 'text-green-600 w-5 h-5 drop-shadow-md';
+    }
+    if (distance < 50) return 'text-amber-500 w-4 h-4 opacity-80';
+    return 'text-red-700 w-4 h-4 opacity-70';
+  };
 
   useEffect(() => {
     // Demander la géolocalisation de l'utilisateur
@@ -226,7 +236,7 @@ export function MapPage() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
           </div>
         ) : (
-          <MapComponent
+          <GoogleMap
             center={mapCenter}
             zoom={mapZoom}
             userLocation={userLocation}
@@ -291,11 +301,14 @@ export function MapPage() {
                           </div>
                         )}
                         {distance !== undefined && (
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <MapPin className="w-3 h-3" />
-                            <span>
-                              {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}
-                            </span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <div className="flex items-center gap-1 text-gray-500">
+                              <MapPin className="w-3 h-3" />
+                              <span>
+                                {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}
+                              </span>
+                            </div>
+                            <Leaf className={getLeafClasses(distance)} />
                           </div>
                         )}
                       </div>
@@ -349,13 +362,16 @@ export function MapPage() {
                 )}
 
                 {selectedProfessional.distance !== undefined && (
-                  <div className="flex items-center gap-1 text-gray-500">
-                    <MapPin className="w-4 h-4" />
-                    <span>
-                      {selectedProfessional.distance < 1
-                        ? `${Math.round(selectedProfessional.distance * 1000)}m`
-                        : `${selectedProfessional.distance.toFixed(1)}km`}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 text-sm text-gray-500">
+                      <MapPin className="w-4 h-4" />
+                      <span>
+                        {selectedProfessional.distance < 1
+                          ? `${Math.round(selectedProfessional.distance * 1000)}m`
+                          : `${selectedProfessional.distance.toFixed(1)}km`}
+                      </span>
+                    </div>
+                    <Leaf className={getLeafClasses(selectedProfessional.distance)} />
                   </div>
                 )}
               </div>

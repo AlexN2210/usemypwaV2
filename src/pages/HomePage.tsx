@@ -11,11 +11,19 @@ export function HomePage() {
   const [posts, setPosts] = useState<Array<Post & { author_name: string; author_avatar?: string }>>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [matchedUsers, setMatchedUsers] = useState<string[]>([]);
   const [swipedPosts, setSwipedPosts] = useState<string[]>([]);
 
-  const isProfessional = profile?.user_type === 'professional' || profile?.user_type === 'professionnel';
-  const isIndividual = profile?.user_type === 'individual';
+  // Harmoniser les valeurs possibles de user_type entre la base et le front
+  // On force ici le type en string pour éviter les conflits de types TS
+  const userType = profile?.user_type as string | undefined;
+
+  const isProfessional =
+    userType === 'professional' ||
+    userType === 'professionnel';
+
+  const isIndividual =
+    userType === 'individual' ||
+    userType === 'particulier';
 
   useEffect(() => {
     // Attendre que le profil soit chargé avant de charger les données
@@ -29,35 +37,11 @@ export function HomePage() {
       loadSwipedPosts();
     } else if (isIndividual) {
       loadProfiles();
-      loadMatches();
     } else {
       // Si le type d'utilisateur n'est pas défini, arrêter le chargement
       setLoading(false);
     }
   }, [user?.id, profile?.id, profile?.user_type]);
-
-  const loadMatches = async () => {
-    if (!user || !isIndividual) return;
-
-    // Pour les particuliers : charger les pros qui ont liké leurs posts
-    // Note: user_id dans matches est le pro qui a liké, target_user_id est le particulier
-    // Donc on cherche les matches où target_user_id = user.id (le particulier)
-    const { data, error } = await supabase
-      .from('matches')
-      .select('user_id, post_id')
-      .eq('target_user_id', user.id)
-      .not('post_id', 'is', null);
-
-    if (error) {
-      console.error('❌ Erreur lors du chargement des matches:', error);
-      return;
-    }
-
-    if (data) {
-      // user_id dans matches est le pro qui a liké
-      setMatchedUsers(data.map(m => m.user_id).filter((id, index, self) => self.indexOf(id) === index));
-    }
-  };
 
   const loadSwipedPosts = async () => {
     if (!user) return;
@@ -288,11 +272,6 @@ export function HomePage() {
     } else if (isIndividual) {
       // Pour les particuliers : voir les pros qui ont liké leurs posts
       if (currentIndex >= profiles.length) return;
-
-      const targetProfile = profiles[currentIndex].profile;
-
-      // Le particulier peut maintenant voir les coordonnées du pro
-      // (pas besoin de créer un match, c'est déjà fait par le pro)
       setCurrentIndex(currentIndex + 1);
     }
   };

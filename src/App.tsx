@@ -126,6 +126,17 @@ function AuthScreen() {
 function MainApp() {
   const { user, profile, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('home');
+  const [matches, setMatches] = useState<
+    Array<{
+      id: string;
+      otherUserId: string;
+      otherUserName: string;
+      createdAt: string;
+    }>
+  >([]);
+  const [showMatches, setShowMatches] = useState(false);
+  const [matchesLoading, setMatchesLoading] = useState(false);
+  const [matchesError, setMatchesError] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -146,7 +157,85 @@ function MainApp() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
-      <Header />
+      <Header
+        onProfileClick={() => setActiveTab('profile')}
+        onSearchClick={() => setActiveTab('discover')}
+        onNotificationsClick={async () => {
+          if (!user) return;
+          setMatchesLoading(true);
+          setMatchesError(null);
+          try {
+            const { supabase } = await import('./lib/supabase');
+
+            // Récupérer tous les likes où le user est impliqué (comme pro ou particulier)
+            const { data: matchRows, error } = await supabase
+              .from('matches')
+              .select('id, user_id, target_user_id, created_at')
+              .or(`user_id.eq.${user.id},target_user_id.eq.${user.id}`)
+              .order('created_at', { ascending: false });
+
+            if (error) {
+              console.error('Erreur lors du chargement des matches:', error);
+              setMatchesError('Impossible de charger les matches.');
+              setMatches([]);
+              setShowMatches(true);
+              setMatchesLoading(false);
+              return;
+            }
+
+            const rows = matchRows || [];
+            if (rows.length === 0) {
+              setMatches([]);
+              setShowMatches(true);
+              setMatchesLoading(false);
+              return;
+            }
+
+            // Identifier les autres utilisateurs (en face de moi)
+            const otherUserIds = Array.from(
+              new Set(
+                rows.map((m) =>
+                  m.user_id === user.id ? m.target_user_id : m.user_id
+                )
+              )
+            );
+
+            const { data: profilesData, error: profilesError } = await supabase
+              .from('profiles')
+              .select('id, full_name')
+              .in('id', otherUserIds);
+
+            if (profilesError) {
+              console.error('Erreur lors du chargement des profils des matches:', profilesError);
+              setMatchesError('Impossible de charger les profils liés aux matches.');
+            }
+
+            const profileMap = new Map(
+              (profilesData || []).map((p: any) => [p.id, p.full_name as string])
+            );
+
+            const withNames = rows.map((m: any) => {
+              const otherId = m.user_id === user.id ? m.target_user_id : m.user_id;
+              return {
+                id: m.id as string,
+                otherUserId: otherId as string,
+                otherUserName: profileMap.get(otherId) || 'Utilisateur',
+                createdAt: m.created_at as string,
+              };
+            });
+
+            setMatches(withNames);
+            setShowMatches(true);
+          } catch (e: any) {
+            console.error('Erreur inattendue lors du chargement des matches:', e);
+            setMatchesError('Erreur inattendue lors du chargement des matches.');
+            setShowMatches(true);
+          } finally {
+            setMatchesLoading(false);
+          }
+        }}
+        hasNotifications={matches.length > 0}
+      />
 
       <main className="flex-1 overflow-hidden pt-16">
         {activeTab === 'home' && <HomePage />}
@@ -157,6 +246,62 @@ function MainApp() {
       </main>
 
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+      {showMatches && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full max-h-[80vh] flex flex-col">
+            <div className="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-800">Vos correspondances</h2>
+                <p className="text-xs text-gray-500">
+              {(['individual', 'particulier'] as string[]).includes(profile.user_type as string)
+                ? 'Les professionnels intéressés par vos demandes'
+                : 'Les particuliers pour lesquels vous avez montré un intérêt'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMatches(false)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                Fermer
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {matchesLoading ? (
+                <div className="flex items-center justify-center py-8 text-gray-500 text-sm">
+                  Chargement des matches...
+                </div>
+              ) : matchesError ? (
+                <div className="text-sm text-red-500 py-4">{matchesError}</div>
+              ) : matches.length === 0 ? (
+                <div className="text-sm text-gray-500 py-4">
+                  Aucun match pour le moment.
+                </div>
+              ) : (
+                <ul className="space-y-3 text-sm">
+                  {matches.map((m) => (
+                    <li
+                      key={m.id}
+                      className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 flex justify-between items-center"
+                    >
+                      <span className="font-medium text-gray-800 truncate">
+                        {m.otherUserName}
+                      </span>
+                      <span className="text-[11px] text-gray-400">
+                        {new Date(m.createdAt).toLocaleDateString('fr-FR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: '2-digit',
+                        })}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

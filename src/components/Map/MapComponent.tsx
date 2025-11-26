@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import { MapPin, Briefcase, Star } from 'lucide-react';
+import { MapPin, Briefcase, Star, Leaf } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -74,6 +74,16 @@ export function MapComponent({
   onMarkerClick,
   userCity,
 }: MapComponentProps) {
+  const getLeafClasses = (distance?: number) => {
+    if (distance === undefined) return 'text-gray-400';
+    if (distance < 10) {
+      // Commerce très proche mis en avant
+      return 'text-green-600 w-4 h-4 drop-shadow-md';
+    }
+    if (distance < 50) return 'text-amber-500 w-3 h-3 opacity-80';
+    return 'text-red-700 w-3 h-3 opacity-70';
+  };
+
   return (
     <MapContainer
       center={center}
@@ -131,11 +141,14 @@ export function MapComponent({
                   </div>
                 )}
                 {distance !== undefined && (
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <MapPin className="w-3 h-3" />
-                    <span>
-                      {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}
-                    </span>
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-1 text-gray-500">
+                      <MapPin className="w-3 h-3" />
+                      <span>
+                        {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}
+                      </span>
+                    </div>
+                    <Leaf className={getLeafClasses(distance)} />
                   </div>
                 )}
                 <button

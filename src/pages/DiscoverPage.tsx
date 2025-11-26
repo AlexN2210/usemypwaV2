@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, Profile, ProfessionalProfile } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Filter, MapPin, Briefcase, Star } from 'lucide-react';
+import { Search, Filter, MapPin, Briefcase, Star, Leaf } from 'lucide-react';
 
 const CATEGORIES = [
   'Tous',
@@ -25,6 +25,16 @@ export function DiscoverPage() {
   const [maxDistance, setMaxDistance] = useState(25);
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const getLeafClasses = (distance?: number) => {
+    if (distance === undefined) return 'text-gray-400';
+    if (distance < 10) {
+      // Commerce très proche mis en avant
+      return 'text-green-600 w-6 h-6 drop-shadow-md';
+    }
+    if (distance < 50) return 'text-amber-500 w-4 h-4 opacity-80';
+    return 'text-red-700 w-4 h-4 opacity-70';
+  };
 
   useEffect(() => {
     loadProfessionals();
@@ -233,11 +243,14 @@ export function DiscoverPage() {
                     )}
 
                     {distance !== undefined && (
-                      <div className="flex items-center gap-1 text-sm text-gray-500">
-                        <MapPin className="w-4 h-4" />
-                        <span>
-                          {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}
-                        </span>
+                      <div className="flex items-center gap-2 text-sm">
+                        <div className="flex items-center gap-1 text-gray-500">
+                          <MapPin className="w-4 h-4" />
+                          <span>
+                            {distance < 1 ? `${Math.round(distance * 1000)}m` : `${distance.toFixed(1)}km`}
+                          </span>
+                        </div>
+                        <Leaf className={getLeafClasses(distance)} />
                       </div>
                     )}
                   </div>
