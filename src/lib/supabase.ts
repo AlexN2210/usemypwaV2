@@ -95,6 +95,7 @@ export interface Match {
 export interface Post {
   id: string;
   user_id: string;
+  caption?: string;
   content?: string;
   image_url?: string;
   type: PostType;

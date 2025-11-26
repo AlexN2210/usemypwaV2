@@ -9,10 +9,13 @@ export function PostsPage() {
   const [posts, setPosts] = useState<Array<Post & { author_name: string; author_avatar?: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [postType, setPostType] = useState<'post' | 'story'>('post');
   const [selectedApeCode, setSelectedApeCode] = useState<string>('');
   const [suggestedCodes, setSuggestedCodes] = useState<string[]>([]);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   // Harmoniser les valeurs de type d'utilisateur (FR/EN)
   const userTypeRaw = profile?.user_type as string | undefined;
@@ -156,7 +159,7 @@ export function PostsPage() {
   };
 
   const createPost = async () => {
-    if (!user || !content.trim()) return;
+    if (!user || !title.trim() || !content.trim()) return;
     
     // Pour les particuliers, une catégorie OU une demande générale est requise
     if (isIndividual && !selectedApeCode) {
@@ -168,13 +171,40 @@ export function PostsPage() {
       ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       : null;
 
+    let imageUrl: string | undefined;
+
+    if (imageFile) {
+      try {
+        const ext = imageFile.name.split('.').pop() || 'jpg';
+        const filePath = `posts/${user.id}/${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('posts')
+          .upload(filePath, imageFile, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) {
+          console.error('Error uploading image:', uploadError);
+        } else {
+          const { data } = supabase.storage.from('posts').getPublicUrl(filePath);
+          imageUrl = data.publicUrl;
+        }
+      } catch (e) {
+        console.error('Unexpected error while uploading image:', e);
+      }
+    }
+
     const { error } = await supabase
       .from('posts')
       .insert({
         user_id: user.id,
+        caption: title.trim(),
         content,
         type: postType,
         expires_at: expiresAt,
+        image_url: imageUrl,
         // Pour les particuliers :
         // - si une catégorie précise est choisie → stocker le code APE
         // - si "général" est choisi → ape_code null (visible comme demande générale)
@@ -191,8 +221,11 @@ export function PostsPage() {
       return;
     }
 
+    setTitle('');
     setContent('');
     setSelectedApeCode('');
+    setImageFile(null);
+    setImagePreview(null);
     setShowCreateModal(false);
     loadPosts();
   };
@@ -277,6 +310,12 @@ export function PostsPage() {
                     </div>
                   </div>
 
+                  {post.caption && (
+                    <h5 className="text-sm sm:text-base font-semibold text-gray-900 mb-1">
+                      {post.caption}
+                    </h5>
+                  )}
+
                   {post.content && (
                     <p className="text-gray-700 mb-3">{post.content}</p>
                   )}
@@ -348,25 +387,19 @@ export function PostsPage() {
             </div>
 
             <div className="mb-4">
-              <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-                {isIndividual
-                  ? 'Décrivez votre besoin'
-                  : isProfessional
-                  ? 'Promouvez vos services (ex: Promo sur les concombres aujourd\'hui et demain)'
-                  : 'Contenu'}
+              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
+                {isIndividual ? 'Titre de votre projet' : 'Titre du post'}
               </label>
-              <textarea
-                id="content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={4}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+              <input
+                id="title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 placeholder={
                   isIndividual
-                    ? 'Ex: Je souhaite refaire ma terrasse...'
-                    : isProfessional
-                    ? 'Ex: Promo sur les concombres aujourd\'hui et demain !'
-                    : 'Partagez quelque chose...'
+                    ? 'Ex: Création d’un site vitrine pour mon commerce'
+                    : 'Ex: Promo spéciale sur les rénovations de salle de bain'
                 }
               />
             </div>
@@ -421,6 +454,60 @@ export function PostsPage() {
               </div>
             )}
 
+            <div className="mb-4">
+              <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
+                {isIndividual
+                  ? 'Décrivez votre besoin'
+                  : isProfessional
+                  ? 'Promouvez vos services (ex: Promo sur les concombres aujourd\'hui et demain)'
+                  : 'Contenu'}
+              </label>
+              <textarea
+                id="content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none"
+                placeholder={
+                  isIndividual
+                    ? 'Ex: Je souhaite refaire ma terrasse...'
+                    : isProfessional
+                    ? 'Ex: Promo sur les concombres aujourd\'hui et demain !'
+                    : 'Partagez quelque chose...'
+                }
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Photo (optionnel)
+              </label>
+              {imagePreview && (
+                <div className="mb-2">
+                  <img
+                    src={imagePreview}
+                    alt="Aperçu"
+                    className="w-full rounded-lg object-cover border border-gray-200"
+                  />
+                </div>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setImageFile(file);
+                  if (file) {
+                    const url = URL.createObjectURL(file);
+                    setImagePreview(url);
+                  } else {
+                    setImagePreview(null);
+                  }
+                }}
+                className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+            </div>
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowCreateModal(false)}
@@ -430,7 +517,7 @@ export function PostsPage() {
               </button>
               <button
                 onClick={createPost}
-                disabled={!content.trim() || (isIndividual && !selectedApeCode)}
+                disabled={!title.trim() || !content.trim() || (isIndividual && !selectedApeCode)}
                 className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Publier

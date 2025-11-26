@@ -307,12 +307,9 @@ export function HomePage() {
     const currentPost = posts[currentIndex];
 
     return (
-      <div className="relative h-full p-0.5 sm:p-4">
-        <div className="max-w-md mx-auto h-full relative">
-          <PostSwipeCard
-            post={currentPost}
-            onSwipe={handleSwipe}
-          />
+      <div className="h-full flex items-center justify-center p-2 sm:p-4">
+        <div className="w-full max-w-md">
+          <PostSwipeCard post={currentPost} onSwipe={handleSwipe} />
         </div>
       </div>
     );
