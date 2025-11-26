@@ -13,6 +13,7 @@ export function MapPage() {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>([48.8566, 2.3522]); // Paris par défaut
   const [mapZoom, setMapZoom] = useState(13);
+  const [currentCity, setCurrentCity] = useState<string | null>(null);
 
   const getLeafClasses = (distance?: number) => {
     if (distance === undefined) return 'text-gray-400';
@@ -34,6 +35,9 @@ export function MapPage() {
           setUserLocation({ lat, lng });
           setMapCenter([lat, lng]);
           setMapZoom(13);
+
+          // Quand on utilise la géolocalisation temps réel, on affiche "Position actuelle"
+          setCurrentCity(null);
         },
         (error) => {
           console.warn('Erreur de géolocalisation:', error);
@@ -41,6 +45,9 @@ export function MapPage() {
           if (profile?.latitude && profile?.longitude) {
             setUserLocation({ lat: profile.latitude, lng: profile.longitude });
             setMapCenter([profile.latitude, profile.longitude]);
+            if (profile.city) {
+              setCurrentCity(profile.city);
+            }
           }
         }
       );
@@ -48,6 +55,9 @@ export function MapPage() {
       // Fallback sur la position du profil
       setUserLocation({ lat: profile.latitude, lng: profile.longitude });
       setMapCenter([profile.latitude, profile.longitude]);
+      if (profile.city) {
+        setCurrentCity(profile.city);
+      }
     }
   }, [profile]);
 
@@ -225,7 +235,7 @@ export function MapPage() {
               <Navigation className="w-5 h-5 text-blue-500" />
               <div>
                 <p className="text-xs text-gray-500">Votre position</p>
-                <p className="text-sm font-semibold text-gray-800">{profile?.city || 'Position actuelle'}</p>
+                <p className="text-sm font-semibold text-gray-800">{currentCity || profile?.city || 'Position actuelle'}</p>
               </div>
             </div>
           </div>
@@ -246,7 +256,7 @@ export function MapPage() {
               // Charger les posts du professionnel
               loadProfessionalPosts(professional.profile.id);
             }}
-            userCity={profile?.city}
+            userCity={currentCity || profile?.city}
           />
         )}
       </div>
