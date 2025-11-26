@@ -61,9 +61,9 @@ export function PostsPage() {
   const createPost = async () => {
     if (!user || !content.trim()) return;
     
-    // Pour les particuliers, l'ape_code est requis
+    // Pour les particuliers, une catégorie OU une demande générale est requise
     if (profile?.user_type === 'individual' && !selectedApeCode) {
-      alert('Veuillez sélectionner une catégorie pour votre demande');
+      alert('Veuillez sélectionner une catégorie ou choisir "Demande générale" pour votre besoin');
       return;
     }
 
@@ -78,7 +78,15 @@ export function PostsPage() {
         content,
         type: postType,
         expires_at: expiresAt,
-        ape_code: profile?.user_type === 'individual' ? selectedApeCode : null,
+        // Pour les particuliers :
+        // - si une catégorie précise est choisie → stocker le code APE
+        // - si "général" est choisi → ape_code null (visible comme demande générale)
+        ape_code:
+          profile?.user_type === 'individual'
+            ? selectedApeCode === 'GENERAL'
+              ? null
+              : selectedApeCode
+            : null,
       });
 
     if (error) {
@@ -269,7 +277,7 @@ export function PostsPage() {
             {profile?.user_type === 'individual' && (
               <div className="mb-4">
                 <label htmlFor="ape_code" className="block text-sm font-medium text-gray-700 mb-2">
-                  Catégorie (Code APE) <span className="text-red-500">*</span>
+                  Professions concernées (Code APE) <span className="text-red-500">*</span>
                 </label>
                 <select
                   id="ape_code"
@@ -278,7 +286,8 @@ export function PostsPage() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                   required
                 >
-                  <option value="">Sélectionnez une catégorie</option>
+                  <option value="">Sélectionnez une ou plusieurs professions</option>
+                  <option value="GENERAL">Demande générale (toutes professions)</option>
                   {Object.entries(APE_CODE_MAPPING)
                     .sort(([, a], [, b]) => a.localeCompare(b))
                     .map(([code, activity]) => (
