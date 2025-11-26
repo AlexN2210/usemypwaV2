@@ -27,7 +27,10 @@ export function PostsPage() {
       return;
     }
 
-    const text = content.toLowerCase();
+    const text = content
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
     const words = Array.from(
       new Set(
         text
@@ -38,7 +41,25 @@ export function PostsPage() {
       )
     );
 
-    if (words.length === 0) {
+    const hints: string[] = [];
+
+    // Règles spécifiques pour la création de site internet / web
+    if (
+      (text.includes('site') && text.includes('internet')) ||
+      (text.includes('site') && text.includes('web')) ||
+      text.includes('ecommerce') ||
+      text.includes('e-commerce') ||
+      text.includes('boutique en ligne') ||
+      text.includes('site vitrine')
+    ) {
+      // 62.01Z : Programmation informatique, 62.02Z : Conseil informatique
+      if (APE_CODE_MAPPING['62.01Z']) hints.push('62.01Z');
+      if (APE_CODE_MAPPING['62.02Z']) hints.push('62.02Z');
+      // Optionnel : pub / marketing pour visibilité
+      if (APE_CODE_MAPPING['73.11Z']) hints.push('73.11Z');
+    }
+
+    if (words.length === 0 && hints.length === 0) {
       setSuggestedCodes([]);
       return;
     }
@@ -62,8 +83,11 @@ export function PostsPage() {
     }
 
     scores.sort((a, b) => b.score - a.score);
-    const top = scores.slice(0, 3).map((s) => s.code);
-    setSuggestedCodes(top);
+    const topFromText = scores.slice(0, 5).map((s) => s.code);
+
+    // Combiner : d'abord les hints spécifiques, puis les meilleurs scores, en supprimant les doublons
+    const combined = Array.from(new Set([...hints, ...topFromText])).slice(0, 3);
+    setSuggestedCodes(combined);
   }, [content, isIndividual]);
 
   useEffect(() => {
