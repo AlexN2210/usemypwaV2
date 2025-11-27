@@ -206,10 +206,12 @@ export function HomePage() {
     }
 
     // Charger les posts qui correspondent au code APE du professionnel
-    // ou les demandes générales (ape_code null)
+    // ou les demandes générales (ape_code null),
+    // en excluant toujours les posts du professionnel lui-même
     const { data: postsData, error } = await supabase
       .from('posts')
       .select('*')
+      .neq('user_id', user.id)
       .or(`ape_code.eq.${professionalData.ape_code},ape_code.is.null`)
       .order('created_at', { ascending: false });
 
