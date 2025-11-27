@@ -180,13 +180,11 @@ export function ProfilePage() {
   const loadActiveStory = async () => {
     if (!profile) return;
 
-    const nowIso = new Date().toISOString();
     const { data, error } = await supabase
       .from('posts')
       .select('*')
       .eq('user_id', profile.id)
       .eq('type', 'story')
-      .gt('expires_at', nowIso)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -274,36 +272,47 @@ export function ProfilePage() {
     <div className="h-full overflow-y-auto pb-20">
       <div className="relative h-48 bg-gradient-to-br from-blue-500 to-cyan-500">
         <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
-          <button
-            type="button"
-            onClick={handleAvatarMainClick}
-            className={`relative w-32 h-32 rounded-full shadow-xl group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              hasActiveStory
-                ? 'p-1 bg-gradient-to-tr from-pink-500 to-orange-500'
-                : 'p-2 bg-white'
-            }`}
-          >
-            <div className="relative w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-4xl font-bold overflow-hidden">
-              {profile.avatar_url ? (
-                <img
-                  src={profile.avatar_url}
-                  alt={profile.full_name}
-                  className="w-full h-full rounded-full object-cover"
-                />
-              ) : (
-                profile.full_name.charAt(0).toUpperCase()
-              )}
-              {/* Overlay au survol / pendant l'upload */}
-              <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs font-semibold">
-                {avatarUploading ? 'Mise à jour...' : 'Changer la photo'}
-              </div>
-              {hasActiveStory && (
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-black/70 text-[10px] font-semibold">
-                  Voir votre story
+          <div className="relative">
+            <button
+              type="button"
+              onClick={handleAvatarMainClick}
+              className={`relative w-32 h-32 rounded-full shadow-xl group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                hasActiveStory
+                  ? 'p-1 bg-gradient-to-tr from-pink-500 to-orange-500'
+                  : 'p-2 bg-white'
+              }`}
+            >
+              <div className="relative w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-4xl font-bold overflow-hidden">
+                {profile.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.full_name}
+                    className="w-full h-full rounded-full object-cover"
+                  />
+                ) : (
+                  profile.full_name.charAt(0).toUpperCase()
+                )}
+                {/* Overlay au survol (desktop) */}
+                <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs font-semibold">
+                  {avatarUploading ? 'Mise à jour...' : 'Voir la story / Modifier'}
                 </div>
-              )}
-            </div>
-          </button>
+                {hasActiveStory && (
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-black/70 text-[10px] font-semibold">
+                    Voir votre story
+                  </div>
+                )}
+              </div>
+            </button>
+
+            {/* Bouton dédié pour changer la photo, toujours disponible */}
+            <button
+              type="button"
+              onClick={handleAvatarClick}
+              className="absolute -bottom-1 -right-1 w-9 h-9 rounded-full bg-white shadow-lg flex items-center justify-center border border-gray-200"
+            >
+              <Edit className="w-4 h-4 text-blue-500" />
+            </button>
+          </div>
           <input
             ref={avatarInputRef}
             type="file"

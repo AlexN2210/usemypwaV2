@@ -261,6 +261,27 @@ export function PostsPage() {
       .eq('id', postId);
   };
 
+  const deleteStory = async (postId: string) => {
+    const post = posts.find(p => p.id === postId);
+    if (!post || post.type !== 'story' || !isProfessional) return;
+
+    const confirmed = window.confirm('Supprimer cette story ? Elle ne sera plus visible par vos clients.');
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', postId);
+
+    if (error) {
+      console.error('Error deleting story:', error);
+      return;
+    }
+
+    // Mettre à jour la liste localement pour une sensation plus fluide
+    setPosts((prev) => prev.filter((p) => p.id !== postId));
+  };
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -362,6 +383,18 @@ export function PostsPage() {
                       <Eye className="w-4 h-4" />
                       <span>{post.views}</span>
                     </div>
+                {isProfessional && post.type === 'story' && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteStory(post.id);
+                    }}
+                    className="ml-auto px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-600 hover:bg-red-100"
+                  >
+                    Supprimer la story
+                  </button>
+                )}
                   </div>
                 </div>
               </div>
