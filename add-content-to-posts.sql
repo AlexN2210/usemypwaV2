@@ -7,6 +7,10 @@ add column if not exists content text;
 alter table posts
 add column if not exists expires_at timestamptz;
 
+-- Champ pour stocker l'URL publique de l'image associée au post / story
+alter table posts
+add column if not exists image_url text;
+
 -- Compteur de vues pour les stories / posts
 alter table posts
 add column if not exists views integer default 0;

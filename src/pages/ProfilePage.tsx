@@ -206,10 +206,9 @@ export function ProfilePage() {
   };
 
   const handleAvatarMainClick = () => {
+    // Le clic sur la grande photo sert uniquement à voir la story
     if (hasActiveStory && activeStory) {
       setShowStoryViewer(true);
-    } else {
-      handleAvatarClick();
     }
   };
 
@@ -292,9 +291,9 @@ export function ProfilePage() {
                 ) : (
                   profile.full_name.charAt(0).toUpperCase()
                 )}
-                {/* Overlay au survol (desktop) */}
-                <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs font-semibold">
-                  {avatarUploading ? 'Mise à jour...' : 'Voir la story / Modifier'}
+                {/* Overlay au survol (desktop) - uniquement pour indiquer la story */}
+                <div className="absolute inset-0 rounded-full bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs font-semibold">
+                  {hasActiveStory ? 'Voir votre story' : ''}
                 </div>
                 {hasActiveStory && (
                   <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-black/70 text-[10px] font-semibold">
