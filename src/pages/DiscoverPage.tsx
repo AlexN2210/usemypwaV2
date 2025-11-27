@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { supabase, Profile, ProfessionalProfile } from '../lib/supabase';
+import { supabase, Profile, ProfessionalProfile, Post } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Filter, MapPin, Briefcase, Star, Leaf } from 'lucide-react';
+import { Search, Filter, MapPin, Briefcase, Star, Leaf, Clock } from 'lucide-react';
 
 const CATEGORIES = [
   'Tous',
@@ -19,7 +19,14 @@ const DISTANCES = [5, 10, 25, 50, 100];
 
 export function DiscoverPage() {
   const { profile } = useAuth();
-  const [professionals, setProfessionals] = useState<Array<{ profile: Profile; professionalProfile?: ProfessionalProfile; distance?: number }>>([]);
+  const [professionals, setProfessionals] = useState<
+    Array<{
+      profile: Profile;
+      professionalProfile?: ProfessionalProfile;
+      distance?: number;
+      latestStory?: Pick<Post, 'id' | 'image_url' | 'created_at'> | null;
+    }>
+  >([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tous');
   const [maxDistance, setMaxDistance] = useState(25);
@@ -56,6 +63,8 @@ export function DiscoverPage() {
       return;
     }
 
+    const nowIso = new Date().toISOString();
+
     const enrichedProfiles = await Promise.all(
       (profilesData || []).map(async (prof) => {
         const { data: professionalData } = await supabase
@@ -63,6 +72,16 @@ export function DiscoverPage() {
           .select('*')
           .eq('user_id', prof.id)
           .maybeSingle();
+
+        // Récupérer la dernière story active du pro (24h)
+        const { data: storyData } = await supabase
+          .from('posts')
+          .select('id, image_url, created_at, type, expires_at')
+          .eq('user_id', prof.id)
+          .eq('type', 'story')
+          .gt('expires_at', nowIso)
+          .order('created_at', { ascending: false })
+          .limit(1);
 
         let distance: number | undefined;
         if (profile?.latitude && profile?.longitude && prof.latitude && prof.longitude) {
@@ -78,6 +97,13 @@ export function DiscoverPage() {
           profile: prof,
           professionalProfile: professionalData || undefined,
           distance,
+          latestStory: storyData && storyData.length > 0
+            ? {
+                id: storyData[0].id,
+                image_url: storyData[0].image_url,
+                created_at: storyData[0].created_at,
+              }
+            : null,
         };
       })
     );
@@ -200,22 +226,31 @@ export function DiscoverPage() {
           </div>
         ) : (
           <div className="space-y-4 pb-4">
-            {filteredBySearch.map(({ profile: prof, professionalProfile, distance }) => (
+            {filteredBySearch.map(({ profile: prof, professionalProfile, distance, latestStory }) => (
               <div
                 key={prof.id}
                 className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition"
               >
                 <div className="flex">
-                  <div className="w-24 h-24 bg-gradient-to-br from-blue-400 to-cyan-400 flex-shrink-0">
-                    {prof.avatar_url ? (
-                      <img
-                        src={prof.avatar_url}
-                        alt={prof.full_name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
-                        {prof.full_name.charAt(0).toUpperCase()}
+                  <div className="relative w-24 h-24 flex-shrink-0">
+                    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-cyan-400">
+                      {prof.avatar_url ? (
+                        <img
+                          src={prof.avatar_url}
+                          alt={prof.full_name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-white text-2xl font-bold">
+                          {prof.full_name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+
+                    {latestStory && (
+                      <div className="absolute -top-2 -left-2 bg-gradient-to-r from-pink-500 to-orange-500 text-white text-[10px] font-semibold px-2 py-1 rounded-full shadow-md flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>Story</span>
                       </div>
                     )}
                   </div>

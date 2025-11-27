@@ -3,6 +3,7 @@ import { supabase, Post } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { Plus, Image as ImageIcon, Eye, Clock, Sparkles } from 'lucide-react';
 import { translateApeCode, APE_CODE_MAPPING } from '../lib/apeCodeTranslator';
+import { StoryEditorModal } from '../components/Stories/StoryEditorModal';
 
 export function PostsPage() {
   const { user, profile } = useAuth();
@@ -16,6 +17,8 @@ export function PostsPage() {
   const [suggestedCodes, setSuggestedCodes] = useState<string[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [rawStoryImageFile, setRawStoryImageFile] = useState<File | null>(null);
+  const [showStoryEditor, setShowStoryEditor] = useState(false);
 
   // Harmoniser les valeurs de type d'utilisateur (FR/EN)
   const userTypeRaw = profile?.user_type as string | undefined;
@@ -99,6 +102,13 @@ export function PostsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, userTypeRaw]);
 
+  // Forcer le type "post" pour les particuliers (pas de story)
+  useEffect(() => {
+    if (isIndividual && postType !== 'post') {
+      setPostType('post');
+    }
+  }, [isIndividual, postType]);
+
   const loadPosts = async () => {
     if (!user || !profile) {
       setPosts([]);
@@ -167,20 +177,30 @@ export function PostsPage() {
       return;
     }
 
-    const expiresAt = postType === 'story'
+    const isStory = isProfessional && postType === 'story';
+
+    // Pour les stories pro, une image est obligatoire
+    if (isStory && !imageFile) {
+      alert('Pour une story, vous devez ajouter une photo (prise avec la caméra ou depuis la galerie).');
+      return;
+    }
+
+    const expiresAt = isStory
       ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       : null;
 
     let imageUrl: string | undefined;
 
-    if (imageFile) {
+    const fileToUpload = isStory ? rawStoryImageFile || imageFile : imageFile;
+
+    if (fileToUpload) {
       try {
-        const ext = imageFile.name.split('.').pop() || 'jpg';
+        const ext = fileToUpload.name.split('.').pop() || 'jpg';
         const filePath = `posts/${user.id}/${Date.now()}.${ext}`;
 
         const { error: uploadError } = await supabase.storage
           .from('posts')
-          .upload(filePath, imageFile, {
+          .upload(filePath, fileToUpload, {
             cacheControl: '3600',
             upsert: false,
           });
@@ -226,6 +246,7 @@ export function PostsPage() {
     setSelectedApeCode('');
     setImageFile(null);
     setImagePreview(null);
+    setRawStoryImageFile(null);
     setShowCreateModal(false);
     loadPosts();
   };
@@ -362,28 +383,34 @@ export function PostsPage() {
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPostType('post')}
-                  className={`flex-1 py-2 rounded-lg font-medium transition ${
-                    postType === 'post'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Post
-                </button>
-                <button
-                  onClick={() => setPostType('story')}
-                  className={`flex-1 py-2 rounded-lg font-medium transition ${
-                    postType === 'story'
-                      ? 'bg-pink-500 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Story (24h)
-                </button>
-              </div>
+              {isProfessional ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPostType('post')}
+                    className={`flex-1 py-2 rounded-lg font-medium transition ${
+                      postType === 'post'
+                        ? 'bg-blue-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Post
+                  </button>
+                  <button
+                    onClick={() => setPostType('story')}
+                    className={`flex-1 py-2 rounded-lg font-medium transition ${
+                      postType === 'story'
+                        ? 'bg-pink-500 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Story (24h)
+                  </button>
+                </div>
+              ) : (
+                <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-medium">
+                  Post (les stories sont réservées aux professionnels)
+                </div>
+              )}
             </div>
 
             <div className="mb-4">
@@ -480,7 +507,9 @@ export function PostsPage() {
 
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Photo (optionnel)
+                {isProfessional && postType === 'story'
+                  ? 'Photo de la story (requis)'
+                  : 'Photo (optionnel)'}
               </label>
               {imagePreview && (
                 <div className="mb-2">
@@ -496,12 +525,21 @@ export function PostsPage() {
                 accept="image/*"
                 onChange={(e) => {
                   const file = e.target.files?.[0] || null;
-                  setImageFile(file);
-                  if (file) {
+                  if (!file) {
+                    setImageFile(null);
+                    setImagePreview(null);
+                    setRawStoryImageFile(null);
+                    return;
+                  }
+
+                  if (isProfessional && postType === 'story') {
+                    // Pour les stories pro, passer d'abord par l'éditeur
+                    setRawStoryImageFile(file);
+                    setShowStoryEditor(true);
+                  } else {
+                    setImageFile(file);
                     const url = URL.createObjectURL(file);
                     setImagePreview(url);
-                  } else {
-                    setImagePreview(null);
                   }
                 }}
                 className="w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
@@ -526,6 +564,21 @@ export function PostsPage() {
           </div>
         </div>
       )}
+
+      {/* Éditeur de story pour les pros */}
+      <StoryEditorModal
+        open={showStoryEditor}
+        imageFile={rawStoryImageFile}
+        onCancel={() => {
+          setShowStoryEditor(false);
+          setRawStoryImageFile(null);
+        }}
+        onSave={(editedFile, previewUrl) => {
+          setShowStoryEditor(false);
+          setImageFile(editedFile);
+          setImagePreview(previewUrl);
+        }}
+      />
     </div>
   );
 }

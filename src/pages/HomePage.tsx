@@ -7,7 +7,14 @@ import { Loader2, Users, FileText } from 'lucide-react';
 
 export function HomePage() {
   const { user, profile } = useAuth();
-  const [profiles, setProfiles] = useState<Array<{ profile: Profile; professionalProfile?: ProfessionalProfile; distance?: number }>>([]);
+  const [profiles, setProfiles] = useState<
+    Array<{
+      profile: Profile;
+      professionalProfile?: ProfessionalProfile;
+      distance?: number;
+      hasStory?: boolean;
+    }>
+  >([]);
   const [posts, setPosts] = useState<Array<Post & { author_name: string; author_avatar?: string }>>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -137,6 +144,8 @@ export function HomePage() {
       return;
     }
 
+    const nowIso = new Date().toISOString();
+
     const enrichedProfiles = await Promise.all(
       (profilesData || []).map(async (prof) => {
         const { data: professionalData } = await supabase
@@ -144,6 +153,15 @@ export function HomePage() {
           .select('*')
           .eq('user_id', prof.id)
           .maybeSingle();
+
+        // Vérifier si le pro a une story active
+        const { data: storyData } = await supabase
+          .from('posts')
+          .select('id, type, expires_at')
+          .eq('user_id', prof.id)
+          .eq('type', 'story')
+          .gt('expires_at', nowIso)
+          .limit(1);
 
         let distance: number | undefined;
         if (profile?.latitude && profile?.longitude && prof.latitude && prof.longitude) {
@@ -159,6 +177,7 @@ export function HomePage() {
           profile: prof,
           professionalProfile: professionalData || undefined,
           distance,
+          hasStory: !!(storyData && storyData.length > 0),
         };
       })
     );
@@ -364,6 +383,7 @@ export function HomePage() {
             profile={currentProfile.profile}
             professionalProfile={currentProfile.professionalProfile}
             distance={currentProfile.distance}
+            hasStory={currentProfile.hasStory}
             onSwipe={handleSwipe}
           />
         </div>

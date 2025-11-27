@@ -8,9 +8,10 @@ interface SwipeCardProps {
   professionalProfile?: ProfessionalProfile;
   onSwipe: (action: 'like' | 'pass' | 'super_like') => void;
   distance?: number;
+  hasStory?: boolean;
 }
 
-export function SwipeCard({ profile, professionalProfile, onSwipe, distance }: SwipeCardProps) {
+export function SwipeCard({ profile, professionalProfile, onSwipe, distance, hasStory }: SwipeCardProps) {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -172,7 +173,17 @@ export function SwipeCard({ profile, professionalProfile, onSwipe, distance }: S
         {/* Contenu - Très compact pour mobile */}
         <div className="flex-1 p-2.5 sm:p-6 flex flex-col justify-between overflow-y-auto min-h-0">
           <div className="flex-1 min-h-0 overflow-y-auto">
-            <h2 className="text-lg sm:text-3xl font-bold text-gray-800 mb-1 sm:mb-2">{profile.full_name}</h2>
+            <div className="flex items-center justify-between mb-1 sm:mb-2">
+              <h2 className="text-lg sm:text-3xl font-bold text-gray-800">
+                {profile.full_name}
+              </h2>
+              {hasStory && (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-pink-500 to-orange-500 text-white text-[10px] sm:text-xs font-semibold shadow-md">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-white mr-0.5" />
+                  Story
+                </div>
+              )}
+            </div>
 
             {professionalProfile && (
               <div className="space-y-1 sm:space-y-2 mb-1.5 sm:mb-4">
@@ -230,24 +241,38 @@ export function SwipeCard({ profile, professionalProfile, onSwipe, distance }: S
                   <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
                   <span>Promotions & Services</span>
                 </div>
-                {professionalPosts.map((post) => (
-                  <div
-                    key={post.id}
-                    className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-2 sm:p-3 border border-blue-100"
-                  >
-                    <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                      {post.content}
-                    </p>
-                    {post.created_at && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(post.created_at).toLocaleDateString('fr-FR', {
-                          day: 'numeric',
-                          month: 'short',
-                        })}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                {professionalPosts.map((post) => {
+                  const isStory = post.type === 'story';
+                  return (
+                    <div
+                      key={post.id}
+                      className={`rounded-lg p-2 sm:p-3 border ${
+                        isStory
+                          ? 'bg-gradient-to-r from-pink-50 via-orange-50 to-amber-50 border-pink-100'
+                          : 'bg-gradient-to-r from-blue-50 to-cyan-50 border-blue-100'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs sm:text-sm text-gray-700 leading-relaxed flex-1">
+                          {post.content}
+                        </p>
+                        {isStory && (
+                          <span className="ml-2 px-2 py-0.5 rounded-full bg-gradient-to-r from-pink-500 to-orange-500 text-[10px] sm:text-xs text-white font-semibold">
+                            Story 24h
+                          </span>
+                        )}
+                      </div>
+                      {post.created_at && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(post.created_at).toLocaleDateString('fr-FR', {
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 

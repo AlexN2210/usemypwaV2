@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase, ProfessionalProfile } from '../lib/supabase';
 import { ProfessionalInfo } from '../components/Profile/ProfessionalInfo';
@@ -20,6 +20,8 @@ export function ProfilePage() {
     category: '',
     website: '',
   });
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -164,6 +166,58 @@ export function ProfilePage() {
     setEditing(false);
   };
 
+  const handleAvatarClick = () => {
+    if (avatarUploading) return;
+    avatarInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!profile) return;
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setAvatarUploading(true);
+
+      const ext = file.name.split('.').pop() || 'jpg';
+      const filePath = `avatars/${profile.id}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error('Erreur lors de l\'upload de l\'avatar:', uploadError);
+        return;
+      }
+
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl, updated_at: new Date().toISOString() })
+        .eq('id', profile.id);
+
+      if (updateError) {
+        console.error('Erreur lors de la mise à jour de l\'avatar dans le profil:', updateError);
+        return;
+      }
+
+      await refreshProfile();
+    } catch (e) {
+      console.error('Erreur inattendue lors de la mise à jour de l\'avatar:', e);
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      }
+    }
+  };
+
   if (!profile) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -176,8 +230,12 @@ export function ProfilePage() {
     <div className="h-full overflow-y-auto pb-20">
       <div className="relative h-48 bg-gradient-to-br from-blue-500 to-cyan-500">
         <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
-          <div className="w-32 h-32 rounded-full bg-white p-2 shadow-xl">
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-4xl font-bold">
+          <button
+            type="button"
+            onClick={handleAvatarClick}
+            className="relative w-32 h-32 rounded-full bg-white p-2 shadow-xl group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-4xl font-bold overflow-hidden">
               {profile.avatar_url ? (
                 <img
                   src={profile.avatar_url}
@@ -187,8 +245,19 @@ export function ProfilePage() {
               ) : (
                 profile.full_name.charAt(0).toUpperCase()
               )}
+              {/* Overlay au survol / pendant l'upload */}
+              <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs font-semibold">
+                {avatarUploading ? 'Mise à jour...' : 'Changer la photo'}
+              </div>
             </div>
-          </div>
+          </button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
         </div>
       </div>
 
