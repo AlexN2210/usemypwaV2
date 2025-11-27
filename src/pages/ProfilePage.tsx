@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase, ProfessionalProfile } from '../lib/supabase';
+import { supabase, ProfessionalProfile, Post } from '../lib/supabase';
 import { ProfessionalInfo } from '../components/Profile/ProfessionalInfo';
 import { formatApeCodeDisplay } from '../lib/apeCodeTranslator';
 import { LogOut, User, Briefcase, MapPin, Award, Edit, Save, X, Hash } from 'lucide-react';
+import { StoryViewerModal } from '../components/Stories/StoryViewerModal';
 
 export function ProfilePage() {
   const { profile, signOut, refreshProfile } = useAuth();
@@ -22,6 +23,9 @@ export function ProfilePage() {
   });
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const [activeStory, setActiveStory] = useState<Post | null>(null);
+  const [hasActiveStory, setHasActiveStory] = useState(false);
+  const [showStoryViewer, setShowStoryViewer] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -52,6 +56,8 @@ export function ProfilePage() {
       } else {
         console.log('ℹ️ Utilisateur non professionnel, pas de chargement du profil professionnel');
       }
+
+      loadActiveStory();
     }
   }, [profile]);
 
@@ -171,6 +177,44 @@ export function ProfilePage() {
     avatarInputRef.current?.click();
   };
 
+  const loadActiveStory = async () => {
+    if (!profile) return;
+
+    const nowIso = new Date().toISOString();
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('user_id', profile.id)
+      .eq('type', 'story')
+      .gt('expires_at', nowIso)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Erreur lors du chargement de la story active:', error);
+      setActiveStory(null);
+      setHasActiveStory(false);
+      return;
+    }
+
+    if (data) {
+      setActiveStory(data as Post);
+      setHasActiveStory(true);
+    } else {
+      setActiveStory(null);
+      setHasActiveStory(false);
+    }
+  };
+
+  const handleAvatarMainClick = () => {
+    if (hasActiveStory && activeStory) {
+      setShowStoryViewer(true);
+    } else {
+      handleAvatarClick();
+    }
+  };
+
   const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!profile) return;
     const file = event.target.files?.[0];
@@ -232,10 +276,14 @@ export function ProfilePage() {
         <div className="absolute -bottom-16 left-1/2 transform -translate-x-1/2">
           <button
             type="button"
-            onClick={handleAvatarClick}
-            className="relative w-32 h-32 rounded-full bg-white p-2 shadow-xl group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            onClick={handleAvatarMainClick}
+            className={`relative w-32 h-32 rounded-full shadow-xl group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+              hasActiveStory
+                ? 'p-1 bg-gradient-to-tr from-pink-500 to-orange-500'
+                : 'p-2 bg-white'
+            }`}
           >
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-4xl font-bold overflow-hidden">
+            <div className="relative w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-cyan-400 flex items-center justify-center text-white text-4xl font-bold overflow-hidden">
               {profile.avatar_url ? (
                 <img
                   src={profile.avatar_url}
@@ -249,6 +297,11 @@ export function ProfilePage() {
               <div className="absolute inset-0 rounded-full bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-xs font-semibold">
                 {avatarUploading ? 'Mise à jour...' : 'Changer la photo'}
               </div>
+              {hasActiveStory && (
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-black/70 text-[10px] font-semibold">
+                  Voir votre story
+                </div>
+              )}
             </div>
           </button>
           <input
@@ -260,6 +313,13 @@ export function ProfilePage() {
           />
         </div>
       </div>
+
+      <StoryViewerModal
+        open={showStoryViewer && !!activeStory}
+        story={activeStory}
+        onClose={() => setShowStoryViewer(false)}
+        isOwner
+      />
 
       <div className="pt-20 px-6">
         <div className="text-center mb-6">

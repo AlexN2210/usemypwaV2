@@ -18,6 +18,7 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
   const [text, setText] = useState('');
   const [textSize, setTextSize] = useState(28);
   const [textColor, setTextColor] = useState<'white' | 'black'>('white');
+  const [textPosition, setTextPosition] = useState(0.8); // 0 = haut, 1 = bas
 
   useEffect(() => {
     if (!open || !imageFile) {
@@ -40,7 +41,7 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
   useEffect(() => {
     if (!open) return;
     draw();
-  }, [open, image, zoom, filter, text, textSize, textColor]);
+  }, [open, image, zoom, filter, text, textSize, textColor, textPosition]);
 
   const applyFilter = (ctx: CanvasRenderingContext2D) => {
     if (filter === 'bw') {
@@ -96,7 +97,10 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
       ctx.textBaseline = 'middle';
 
       const x = width / 2;
-      const y = height - 60;
+      // Position verticale modulable (entre 20% et 90% de la hauteur)
+      const minY = height * 0.2;
+      const maxY = height * 0.9;
+      const y = minY + (maxY - minY) * textPosition;
 
       // Ombre pour la lisibilité
       ctx.fillStyle = textColor === 'white' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)';
@@ -204,7 +208,7 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
               <Type className="w-3 h-3 text-blue-400" />
               <span className="font-medium text-gray-200">Texte</span>
             </div>
-            <div className="space-y-2 pl-1">
+          <div className="space-y-3 pl-1">
               <input
                 type="text"
                 value={text}
@@ -222,6 +226,18 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
                     step={1}
                     value={textSize}
                     onChange={(e) => setTextSize(Number(e.target.value))}
+                    className="ml-2 w-28"
+                  />
+                </label>
+                <label className="flex items-center gap-1 text-gray-400">
+                  Position
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={textPosition}
+                    onChange={(e) => setTextPosition(Number(e.target.value))}
                     className="ml-2 w-28"
                   />
                 </label>
