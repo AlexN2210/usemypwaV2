@@ -186,7 +186,6 @@ export function ProfilePage() {
       .select('*')
       .eq('user_id', profile.id)
       .eq('type', 'story')
-      .not('image_url', 'is', null)
       .gt('expires_at', nowIso)
       .order('created_at', { ascending: false })
       .limit(1)
