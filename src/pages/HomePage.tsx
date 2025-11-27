@@ -275,7 +275,7 @@ export function HomePage() {
         .insert({
           user_id: user.id,
           target_user_id: currentPost.user_id,
-          action,
+          // La colonne "action" n'existe pas dans la table matches de ton schéma actuel
           matched: false,
           post_id: currentPost.id,
         });
