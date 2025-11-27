@@ -13,9 +13,7 @@ type FilterType = 'none' | 'bw' | 'sepia';
 export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEditorModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [scale, setScale] = useState(1);
-  const [offsetX, setOffsetX] = useState(0);
-  const [offsetY, setOffsetY] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const [filter, setFilter] = useState<FilterType>('none');
   const [text, setText] = useState('');
   const [textSize, setTextSize] = useState(28);
@@ -30,9 +28,7 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
     const img = new Image();
     img.onload = () => {
       setImage(img);
-      setScale(1);
-      setOffsetX(0);
-      setOffsetY(0);
+      setZoom(1);
     };
     img.src = URL.createObjectURL(imageFile);
 
@@ -44,7 +40,7 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
   useEffect(() => {
     if (!open) return;
     draw();
-  }, [open, image, scale, offsetX, offsetY, filter, text, textSize, textColor]);
+  }, [open, image, zoom, filter, text, textSize, textColor]);
 
   const applyFilter = (ctx: CanvasRenderingContext2D) => {
     if (filter === 'bw') {
@@ -68,23 +64,25 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
 
     ctx.clearRect(0, 0, width, height);
 
-    // Dessin de l'image avec zoom + décalage
+    // Dessin de l'image en mode "cover" simple (comme une story plein écran)
     const imgAspect = image.width / image.height;
     const canvasAspect = width / height;
 
-    let drawWidth = width;
-    let drawHeight = height;
-
+    let baseScale: number;
     if (imgAspect > canvasAspect) {
-      drawHeight = height / scale;
-      drawWidth = drawHeight * imgAspect;
+      // Image plus large que le canvas → caler sur la hauteur
+      baseScale = height / image.height;
     } else {
-      drawWidth = width / scale;
-      drawHeight = drawWidth / imgAspect;
+      // Image plus haute que le canvas → caler sur la largeur
+      baseScale = width / image.width;
     }
 
-    const dx = width / 2 - drawWidth / 2 + offsetX;
-    const dy = height / 2 - drawHeight / 2 + offsetY;
+    const finalScale = baseScale * zoom;
+    const drawWidth = image.width * finalScale;
+    const drawHeight = image.height * finalScale;
+
+    const dx = width / 2 - drawWidth / 2;
+    const dy = height / 2 - drawHeight / 2;
 
     applyFilter(ctx);
     ctx.drawImage(image, dx, dy, drawWidth, drawHeight);
@@ -129,86 +127,65 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
   if (!open || !imageFile) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black/70 flex items-center justify-center p-3">
-      <div className="bg-gray-900 text-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800">
-          <div className="flex items-center gap-2">
-            <Wand2 className="w-4 h-4 text-amber-400" />
-            <h2 className="text-sm font-semibold">Éditer la story</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="p-1 rounded-full hover:bg-gray-800"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <div className="fixed inset-0 z-[60] bg-black/80 flex flex-col">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-gray-900/95 text-white">
+        <div className="flex items-center gap-2">
+          <Wand2 className="w-4 h-4 text-amber-400" />
+          <h2 className="text-sm font-semibold">Éditer la story</h2>
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="p-1 rounded-full hover:bg-gray-800"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 flex flex-col gap-3 p-3 overflow-y-auto bg-gray-900 text-white">
+        <div className="relative w-full max-w-sm mx-auto aspect-[9/16] bg-black rounded-xl overflow-hidden border border-gray-800">
+          <canvas ref={canvasRef} width={360} height={640} className="w-full h-full" />
         </div>
 
-        <div className="flex-1 flex flex-col gap-3 p-3">
-          <div className="relative w-full max-w-sm mx-auto aspect-[9/16] bg-black rounded-xl overflow-hidden border border-gray-800">
-            <canvas ref={canvasRef} width={360} height={640} className="w-full h-full" />
+        {/* Contrôles simplifiés */}
+        <div className="space-y-4 text-xs mt-2">
+          {/* Zoom */}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <SlidersHorizontal className="w-3 h-3 text-gray-300" />
+              <span className="font-medium text-gray-200">Zoom</span>
+            </div>
+            <div className="flex items-center gap-3 px-1">
+              <span className="w-10 text-[11px] text-gray-400">-</span>
+              <input
+                type="range"
+                min={1}
+                max={1.8}
+                step={0.05}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                className="flex-1"
+              />
+              <span className="w-10 text-right text-[11px] text-gray-400">+</span>
+            </div>
           </div>
 
-          {/* Contrôles */}
-          <div className="space-y-3 text-xs">
+          {/* Filtres */}
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <SlidersHorizontal className="w-3 h-3 text-gray-300" />
-              <span className="font-medium text-gray-200">Zoom & Position</span>
-            </div>
-            <div className="flex flex-col gap-2 pl-5">
-              <label className="flex items-center gap-2">
-                <span className="w-16 text-gray-400">Zoom</span>
-                <input
-                  type="range"
-                  min={1}
-                  max={2}
-                  step={0.05}
-                  value={scale}
-                  onChange={(e) => setScale(Number(e.target.value))}
-                  className="flex-1"
-                />
-              </label>
-              <label className="flex items-center gap-2">
-                <span className="w-16 text-gray-400">Horiz.</span>
-                <input
-                  type="range"
-                  min={-100}
-                  max={100}
-                  step={1}
-                  value={offsetX}
-                  onChange={(e) => setOffsetX(Number(e.target.value))}
-                  className="flex-1"
-                />
-              </label>
-              <label className="flex items-center gap-2">
-                <span className="w-16 text-gray-400">Vert.</span>
-                <input
-                  type="range"
-                  min={-100}
-                  max={100}
-                  step={1}
-                  value={offsetY}
-                  onChange={(e) => setOffsetY(Number(e.target.value))}
-                  className="flex-1"
-                />
-              </label>
-            </div>
-
-            <div className="flex items-center gap-2 mt-2">
               <Wand2 className="w-3 h-3 text-amber-400" />
               <span className="font-medium text-gray-200">Filtres</span>
             </div>
-            <div className="flex gap-2 pl-5">
-              {([
+            <div className="flex gap-2 pl-1">
+              {[
                 ['none', 'Aucun'],
                 ['bw', 'Noir & blanc'],
                 ['sepia', 'Sépia'],
-              ] as [FilterType, string][]).map(([key, label]) => (
+              ].map(([key, label]) => (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setFilter(key)}
+                  onClick={() => setFilter(key as FilterType)}
                   className={`px-3 py-1 rounded-full border text-[11px] ${
                     filter === key
                       ? 'bg-amber-400 text-black border-amber-400'
@@ -219,12 +196,15 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
                 </button>
               ))}
             </div>
+          </div>
 
-            <div className="flex items-center gap-2 mt-2">
+          {/* Texte */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
               <Type className="w-3 h-3 text-blue-400" />
               <span className="font-medium text-gray-200">Texte</span>
             </div>
-            <div className="space-y-2 pl-5">
+            <div className="space-y-2 pl-1">
               <input
                 type="text"
                 value={text}
@@ -232,17 +212,17 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
                 placeholder="Ajoutez un texte sur la story..."
                 className="w-full px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-xs text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <label className="flex items-center gap-1 text-gray-400">
                   Taille
                   <input
                     type="range"
-                    min={16}
-                    max={40}
+                    min={18}
+                    max={36}
                     step={1}
                     value={textSize}
                     onChange={(e) => setTextSize(Number(e.target.value))}
-                    className="ml-2"
+                    className="ml-2 w-28"
                   />
                 </label>
                 <div className="flex items-center gap-2">
@@ -269,8 +249,9 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="px-4 py-3 border-t border-gray-800 flex gap-3">
+      <div className="px-4 py-3 border-t border-gray-800 flex gap-3 bg-gray-900/95 text-white">
           <button
             type="button"
             onClick={onCancel}
@@ -286,7 +267,6 @@ export function StoryEditorModal({ open, imageFile, onCancel, onSave }: StoryEdi
             Enregistrer la story
           </button>
         </div>
-      </div>
     </div>
   );
 }
