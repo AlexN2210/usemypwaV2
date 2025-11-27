@@ -132,6 +132,7 @@ function MainApp() {
       otherUserId: string;
       otherUserName: string;
       createdAt: string;
+      message: string;
     }>
   >([]);
   const [showMatches, setShowMatches] = useState(false);
@@ -202,7 +203,7 @@ function MainApp() {
 
             const { data: profilesData, error: profilesError } = await supabase
               .from('profiles')
-              .select('id, full_name')
+              .select('id, full_name, phone, address, city, postal_code')
               .in('id', otherUserIds);
 
             if (profilesError) {
@@ -211,16 +212,63 @@ function MainApp() {
             }
 
             const profileMap = new Map(
-              (profilesData || []).map((p: any) => [p.id, p.full_name as string])
+              (profilesData || []).map((p: any) => [p.id, p])
             );
 
+            const isIndividual =
+              (['individual', 'particulier'] as string[]).includes(
+                profile.user_type as string
+              );
+
             const withNames = rows.map((m: any) => {
-              const otherId = m.user_id === user.id ? m.target_user_id : m.user_id;
+              const isProSide = m.user_id === user.id;
+              const otherId = isProSide ? m.target_user_id : m.user_id;
+              const otherProfile = profileMap.get(otherId) as
+                | {
+                    id: string;
+                    full_name: string;
+                    phone?: string;
+                    address?: string;
+                    city?: string;
+                    postal_code?: string;
+                  }
+                | undefined;
+              const otherName = otherProfile?.full_name || 'Utilisateur';
+
+              let message: string;
+              if (isIndividual) {
+                // Côté particulier : on affiche les coordonnées du pro
+                const parts: string[] = [];
+                if (otherProfile?.phone) {
+                  parts.push(`📞 ${otherProfile.phone}`);
+                }
+                const addr = [
+                  otherProfile?.address,
+                  otherProfile?.postal_code,
+                  otherProfile?.city,
+                ]
+                  .filter(Boolean)
+                  .join(' ');
+                if (addr.trim()) {
+                  parts.push(addr.trim());
+                }
+                const contact =
+                  parts.length > 0
+                    ? parts.join(' • ')
+                    : "Consultez son profil pour plus d'informations.";
+
+                message = `Les coordonnées de ${otherName} vous ont été envoyées : ${contact}`;
+              } else {
+                // Côté pro : simple confirmation que ses coordonnées ont été envoyées
+                message = `Vos coordonnées ont été envoyées à ${otherName}.`;
+              }
+
               return {
                 id: m.id as string,
                 otherUserId: otherId as string,
-                otherUserName: profileMap.get(otherId) || 'Utilisateur',
+                otherUserName: otherName,
                 createdAt: m.created_at as string,
+                message,
               };
             });
 
@@ -282,17 +330,22 @@ function MainApp() {
                   {matches.map((m) => (
                     <li
                       key={m.id}
-                      className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 flex justify-between items-center"
+                      className="px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 flex flex-col gap-1"
                     >
-                      <span className="font-medium text-gray-800 truncate">
-                        {m.otherUserName}
-                      </span>
-                      <span className="text-[11px] text-gray-400">
-                        {new Date(m.createdAt).toLocaleDateString('fr-FR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: '2-digit',
-                        })}
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="font-medium text-gray-800 truncate">
+                          {m.otherUserName}
+                        </span>
+                        <span className="text-[11px] text-gray-400">
+                          {new Date(m.createdAt).toLocaleDateString('fr-FR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: '2-digit',
+                          })}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-gray-600">
+                        {m.message}
                       </span>
                     </li>
                   ))}

@@ -268,6 +268,8 @@ export function HomePage() {
 
       const currentPost = posts[currentIndex];
 
+      // On tente d'enregistrer le match, mais même en cas d'erreur (RLS, etc.)
+      // on fait avancer le swipe pour ne pas bloquer l'UX.
       const { error } = await supabase
         .from('matches')
         .insert({
@@ -279,8 +281,7 @@ export function HomePage() {
         });
 
       if (error) {
-        console.error('Error creating match:', error);
-        return;
+        console.error('Error creating match (non bloquant pour le swipe):', error);
       }
 
       if (action === 'like') {
