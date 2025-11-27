@@ -198,7 +198,7 @@ export function ProfilePage() {
       return;
     }
 
-    if (data) {
+    if (data && (data as Post).image_url) {
       setActiveStory(data as Post);
       setHasActiveStory(true);
     } else {
